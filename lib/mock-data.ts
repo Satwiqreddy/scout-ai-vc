@@ -11,6 +11,7 @@ export interface Company {
     tags: string[];
     signals: Signal[];
     notes?: string;
+    dealStatus?: 'Sourcing' | 'Qualified' | 'Due Diligence' | 'Investment' | 'Passed';
     enrichedData?: EnrichedData;
 }
 

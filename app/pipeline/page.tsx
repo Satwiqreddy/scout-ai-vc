@@ -149,9 +149,27 @@ export default function PipelinePage() {
                                             </div>
                                             <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{company.stage}</span>
                                         </div>
-                                        <span className="text-[9px] font-bold text-text-muted/40 uppercase tabular-nums">
-                                            {new Date(company.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                        </span>
+
+                                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                            {column.id !== STAGES[0] && (
+                                                <button
+                                                    onClick={() => updateStatus(company._id, STAGES[STAGES.indexOf(column.id) - 1])}
+                                                    className="p-1.5 rounded-lg bg-surface-muted border border-surface-border hover:bg-brand-secondary hover:text-white transition-all"
+                                                    title="Move back"
+                                                >
+                                                    <ChevronRight size={10} className="rotate-180" />
+                                                </button>
+                                            )}
+                                            {column.id !== STAGES[STAGES.length - 1] && (
+                                                <button
+                                                    onClick={() => updateStatus(company._id, STAGES[STAGES.indexOf(column.id) + 1])}
+                                                    className="p-1.5 rounded-lg bg-surface-muted border border-surface-border hover:bg-brand-secondary hover:text-white transition-all"
+                                                    title="Move forward"
+                                                >
+                                                    <ChevronRight size={10} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </motion.div>
                             ))}

@@ -25,7 +25,8 @@ import {
     Save,
     Check,
     FileText,
-    Target
+    Target,
+    Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { mockCompanies, Company } from '@/lib/mock-data';
@@ -218,8 +219,8 @@ export default function CompanyProfilePage() {
                                 onClick={() => setShowSaveMenu(!showSaveMenu)}
                                 className="px-5 py-2.5 rounded-2xl bg-surface-bg border border-surface-border text-sm font-black hover:bg-surface-muted transition-all flex items-center gap-2"
                             >
-                                <Plus className="w-4 h-4" />
-                                Save to Pipeline
+                                <Target className="w-4 h-4 text-brand-secondary" />
+                                {company.dealStatus || 'Move Stage'}
                             </button>
 
                             <AnimatePresence>
@@ -230,21 +231,32 @@ export default function CompanyProfilePage() {
                                         exit={{ opacity: 0, y: 10 }}
                                         className="absolute right-0 mt-2 w-64 bg-surface-bg border border-surface-border rounded-2xl shadow-2xl p-2 z-50"
                                     >
-                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest p-3 border-b border-surface-border mb-1 text-left">Select Pipeline</p>
-                                        {lists.length > 0 ? (
-                                            lists.map(list => (
-                                                <button
-                                                    key={list.id}
-                                                    onClick={() => handleAddToList(list.id)}
-                                                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-surface-muted transition-colors flex items-center justify-between group"
-                                                >
-                                                    <span className="text-sm font-bold group-hover:text-brand-secondary">{list.name}</span>
-                                                    {list.companies.includes(params.id) && <Check className="w-4 h-4 text-brand-secondary" />}
-                                                </button>
-                                            ))
-                                        ) : (
-                                            <p className="p-4 text-xs font-medium text-text-muted text-center italic">No lists created yet.</p>
-                                        )}
+                                        <p className="text-[10px] font-black text-text-muted uppercase tracking-widest p-3 border-b border-surface-border mb-1 text-left">Update Pipeline Stage</p>
+                                        {['Sourcing', 'Qualified', 'Due Diligence', 'Investment', 'Passed'].map(stage => (
+                                            <button
+                                                key={stage}
+                                                onClick={async () => {
+                                                    try {
+                                                        const res = await fetch(`/api/companies/${params.id}`, {
+                                                            method: 'PATCH',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ dealStatus: stage })
+                                                        });
+                                                        if (res.ok) {
+                                                            setCompany(prev => prev ? { ...prev, dealStatus: stage } as any : null);
+                                                            showToast(`Moved to ${stage}`);
+                                                        }
+                                                    } catch (err) {
+                                                        showToast("Failed to update stage", "error");
+                                                    }
+                                                    setShowSaveMenu(false);
+                                                }}
+                                                className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-surface-muted transition-colors flex items-center justify-between group"
+                                            >
+                                                <span className="text-sm font-bold group-hover:text-brand-secondary">{stage}</span>
+                                                {company.dealStatus === stage && <Check className="w-4 h-4 text-brand-secondary" />}
+                                            </button>
+                                        ))}
                                     </motion.div>
                                 )}
                             </AnimatePresence>
