@@ -57,7 +57,12 @@ export default function LoginPage() {
                 alert('Account created! Please sign in.');
             }
         } catch (err: any) {
-            setError(err.message);
+            if (err.message === 'Failed to fetch') {
+                setError('Network Error: The server could not be reached. Please check your internet or redeploy in Vercel.');
+            } else {
+                setError(err.message);
+            }
+            console.error('Auth Full Error:', err);
         } finally {
             setIsLoading(false);
         }
