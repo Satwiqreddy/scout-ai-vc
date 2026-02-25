@@ -30,25 +30,25 @@ const navItems = [
 
 export function Sidebar() {
     const pathname = usePathname();
-    const { isCollapsed, setIsCollapsed } = useUI();
+    const { isCollapsed, setIsCollapsed, logout } = useUI();
 
     return (
         <motion.aside
             initial={false}
             animate={{
                 width: isCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
-                backgroundColor: '#0f172a' // Midnight Navy
+                backgroundColor: 'var(--color-sidebar-bg)'
             }}
-            className="fixed left-0 top-0 h-screen border-r border-white/10 flex flex-col z-50 overflow-hidden text-white/70 shadow-2xl"
+            className="fixed left-0 top-0 h-screen border-r border-sidebar-border flex flex-col z-50 overflow-hidden shadow-2xl transition-colors duration-300"
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
             {/* Background Glow */}
-            <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-brand-secondary/20 to-transparent pointer-events-none" />
+            <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-brand-secondary/10 to-transparent pointer-events-none" />
 
             {/* Toggle Button */}
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="absolute right-4 top-8 p-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all z-20"
+                className="absolute right-4 top-8 p-1.5 rounded-lg bg-surface-muted border border-surface-border text-text-muted hover:text-brand-secondary hover:bg-surface-bg transition-all z-20"
             >
                 {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
@@ -73,7 +73,7 @@ export function Sidebar() {
                                 exit={{ opacity: 0, x: -10 }}
                                 className="flex flex-col whitespace-nowrap"
                             >
-                                <span className="font-black text-lg tracking-tight leading-none text-white">VC Scout</span>
+                                <span className="font-black text-lg tracking-tight leading-none text-text-bright">VC Scout</span>
                                 <span className="text-[9px] font-black text-brand-secondary uppercase tracking-[0.2em] mt-1">Intelligence</span>
                             </motion.div>
                         )}
@@ -91,17 +91,17 @@ export function Sidebar() {
                                 className={cn(
                                     "relative flex items-center group px-4 py-3 rounded-2xl transition-all duration-300",
                                     isActive
-                                        ? "text-white bg-white/10"
-                                        : "text-white/50 hover:text-white hover:bg-white/5",
+                                        ? "text-brand-secondary bg-brand-secondary/5 font-bold"
+                                        : "text-sidebar-text hover:text-text-bright hover:bg-sidebar-active/5",
                                     isCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-4"
                                 )}
                             >
-                                <item.icon className={cn("shrink-0 w-5 h-5 transition-colors duration-300", isActive ? "text-brand-secondary" : "text-white/40 group-hover:text-white")} />
+                                <item.icon className={cn("shrink-0 w-5 h-5 transition-colors duration-300", isActive ? "text-brand-secondary" : "text-sidebar-text group-hover:text-text-bright")} />
                                 {!isCollapsed && (
                                     <motion.span
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        className="font-bold text-[14px] whitespace-nowrap"
+                                        className="text-[14px] whitespace-nowrap"
                                     >
                                         {item.name}
                                     </motion.span>
@@ -119,29 +119,42 @@ export function Sidebar() {
 
                 {/* Footer Area */}
                 <div className={cn("mt-auto pt-6", isCollapsed ? "flex flex-col items-center" : "")}>
+                    <div className="mb-4">
+                        <button
+                            onClick={logout}
+                            className={cn(
+                                "flex items-center gap-3 w-full px-4 py-3 rounded-2xl text-red-500 hover:bg-red-500/10 transition-all group",
+                                isCollapsed ? "justify-center px-0 w-12" : ""
+                            )}
+                        >
+                            <LogOut className="w-5 h-5" />
+                            {!isCollapsed && <span className="text-sm font-black">Sign Out</span>}
+                        </button>
+                    </div>
+
                     {!isCollapsed ? (
-                        <div className="p-4 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md mb-6 relative group overflow-hidden">
+                        <div className="p-4 rounded-3xl bg-surface-muted border border-surface-border mb-6 relative group overflow-hidden">
                             <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                <Settings size={14} />
+                                <Settings size={14} className="text-text-muted" />
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-black text-xs shadow-lg">
                                     JD
                                 </div>
-                                <div className="flex flex-col overflow-hidden">
-                                    <span className="text-sm font-black text-white truncate">Jane Doe</span>
+                                <div className="flex flex-col overflow-hidden text-left">
+                                    <span className="text-sm font-black text-text-bright truncate">Jane Doe</span>
                                     <span className="text-[10px] font-bold text-brand-secondary uppercase tracking-wider truncate">Managing Partner</span>
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 cursor-pointer hover:bg-white/10 transition-colors">
-                            <span className="text-[10px] font-black">JD</span>
+                        <div className="w-10 h-10 rounded-2xl bg-surface-muted border border-surface-border flex items-center justify-center mb-6 cursor-pointer hover:bg-surface-hover transition-colors">
+                            <span className="text-[10px] font-black text-text-muted">JD</span>
                         </div>
                     )}
 
                     <div className={cn(
-                        "flex items-center justify-between text-[9px] font-black text-white/20 uppercase tracking-[0.2em]",
+                        "flex items-center justify-between text-[9px] font-black text-text-muted/40 uppercase tracking-[0.2em]",
                         isCollapsed ? "flex-col gap-2" : "px-2"
                     )}>
                         {!isCollapsed && <span>v2.4.0</span>}

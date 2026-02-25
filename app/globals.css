@@ -12,6 +12,11 @@
   --color-surface-hover: #f3f4f6;
   --color-surface-border: #e5e7eb;
 
+  --color-sidebar-bg: #ffffff;
+  --color-sidebar-text: #4b5563;
+  --color-sidebar-border: #e5e7eb;
+  --color-sidebar-active: #6366f1;
+
   --color-text-main: #111827;
   --color-text-muted: #6b7280;
   --color-text-bright: #000000;
@@ -29,20 +34,37 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --background: #09090b;
     --foreground: #fafafa;
-  }
-
-  @theme {
     --color-surface-bg: #09090b;
     --color-surface-muted: #18181b;
     --color-surface-hover: #27272a;
     --color-surface-border: #27272a;
+    --color-sidebar-bg: #0f172a;
+    --color-sidebar-text: #94a3b8;
+    --color-sidebar-border: rgba(255, 255, 255, 0.1);
+    --color-sidebar-active: #6366f1;
     --color-text-main: #fafafa;
     --color-text-muted: #a1a1aa;
     --color-text-bright: #ffffff;
   }
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --color-surface-bg: #09090b;
+  --color-surface-muted: #18181b;
+  --color-surface-hover: #27272a;
+  --color-surface-border: #27272a;
+  --color-sidebar-bg: #0f172a;
+  --color-sidebar-text: #94a3b8;
+  --color-sidebar-border: rgba(255, 255, 255, 0.1);
+  --color-sidebar-active: #6366f1;
+  --color-text-main: #fafafa;
+  --color-text-muted: #a1a1aa;
+  --color-text-bright: #ffffff;
 }
 
 body {

@@ -22,6 +22,8 @@ import { mockCompanies } from '@/lib/mock-data';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useSearchParams } from 'next/navigation';
+import { getStorageItem, setStorageItem } from '@/lib/storage';
+import { Company } from '@/lib/mock-data';
 
 type SortKey = 'name' | 'stage' | 'fundingTotal' | 'sector';
 
@@ -30,20 +32,33 @@ export default function CompaniesPage() {
     const [search, setSearch] = useState('');
     const [activeSector, setActiveSector] = useState<string>('All');
     const [isLoading, setIsLoading] = useState(true);
+    const [allCompanies, setAllCompanies] = useState<Company[]>(mockCompanies);
 
     useEffect(() => {
         const query = searchParams.get('q');
         if (query) setSearch(query);
     }, [searchParams]);
-    const [sortKey, setSortKey] = useState<SortKey>('name');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
 
     const sectors = ['All', 'Artificial Intelligence', 'Fintech', 'Developer Tools', 'SaaS'];
 
     useEffect(() => {
         const timer = setTimeout(() => setIsLoading(false), 800);
+        // Load custom companies
+        const customCompanies = getStorageItem('vc_custom_companies', []);
+        setAllCompanies([...mockCompanies, ...customCompanies]);
+        return () => clearTimeout(timer);
+    }, []);
+    const [sortKey, setSortKey] = useState<SortKey>('name');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const itemsPerPage = 5;
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsLoading(false), 800);
+        // Load custom companies
+        const customCompanies = getStorageItem('vc_custom_companies', []);
+        setAllCompanies([...mockCompanies, ...customCompanies]);
         return () => clearTimeout(timer);
     }, []);
 
@@ -57,8 +72,16 @@ export default function CompaniesPage() {
         setCurrentPage(1);
     };
 
+    const handleAddEntity = (newCompany: Company) => {
+        const customCompanies = getStorageItem('vc_custom_companies', []);
+        const updatedCustom = [...customCompanies, newCompany];
+        setStorageItem('vc_custom_companies', updatedCustom);
+        setAllCompanies([...mockCompanies, ...updatedCustom]);
+        setIsAddModalOpen(false);
+    };
+
     const filteredAndSortedCompanies = useMemo(() => {
-        let result = mockCompanies.filter(c => {
+        let result = allCompanies.filter(c => {
             const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
                 c.description.toLowerCase().includes(search.toLowerCase());
             const matchesSector = activeSector === 'All' || c.sector === activeSector;
@@ -66,10 +89,9 @@ export default function CompaniesPage() {
         });
 
         result.sort((a, b) => {
-            let valA = a[sortKey];
-            let valB = b[sortKey];
+            let valA: string | number = a[sortKey];
+            let valB: string | number = b[sortKey];
 
-            // Basic funding sort (strings like $13B+) - very simplified for mock
             if (sortKey === 'fundingTotal') {
                 valA = parseFloat(a.fundingTotal.replace(/[^0-9.]/g, '')) || 0;
                 valB = parseFloat(b.fundingTotal.replace(/[^0-9.]/g, '')) || 0;
@@ -112,7 +134,10 @@ export default function CompaniesPage() {
                     <p className="text-text-muted font-medium">Explore high-signal companies matching your thesis.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-6 py-3 bg-brand-primary text-white dark:bg-foreground dark:text-background rounded-2xl font-bold hover:scale-105 transition-transform shadow-lg shadow-brand-primary/10">
+                    <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-brand-primary text-white dark:bg-foreground dark:text-background rounded-2xl font-bold hover:scale-105 transition-transform shadow-lg shadow-brand-primary/10"
+                    >
                         <Plus className="w-4 h-4" />
                         Add Entity
                     </button>
@@ -320,7 +345,161 @@ export default function CompaniesPage() {
                     </button>
                 </div>
             </motion.div>
+
+            <AddEntityModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onAdd={handleAddEntity}
+            />
         </div>
+    );
+}
+
+function AddEntityModal({ isOpen, onClose, onAdd }: { isOpen: boolean; onClose: () => void; onAdd: (c: Company) => void }) {
+    const [name, setName] = useState('');
+    const [website, setWebsite] = useState('');
+    const [sector, setSector] = useState('SaaS');
+    const [stage, setStage] = useState<Company['stage']>('Seed');
+    const [funding, setFunding] = useState('');
+    const [location, setLocation] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const newCompany: Company = {
+            id: Math.random().toString(36).substr(2, 9),
+            name,
+            website: website.startsWith('http') ? website : `https://${website}`,
+            description: `${name} is a high-potential venture in the ${sector} sector.`,
+            sector,
+            stage,
+            fundingTotal: funding || '$0',
+            location: location || 'Remote',
+            founded: new Date().getFullYear(),
+            tags: [sector, stage],
+            signals: []
+        };
+        onAdd(newCompany);
+        setName('');
+        setWebsite('');
+        setFunding('');
+        setLocation('');
+    };
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                        className="w-full max-w-lg bg-surface-bg border border-surface-border rounded-[2.5rem] shadow-2xl overflow-hidden"
+                    >
+                        <div className="p-8 border-b border-surface-border flex items-center justify-between bg-surface-muted/30">
+                            <div>
+                                <h2 className="text-2xl font-black tracking-tight">Add New Entity</h2>
+                                <p className="text-text-muted text-xs font-bold uppercase tracking-widest mt-1">Intelligence Database Entry</p>
+                            </div>
+                            <button onClick={onClose} className="p-2 hover:bg-surface-muted rounded-xl transition-colors">
+                                <Plus className="w-6 h-6 rotate-45 text-text-muted" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted pl-1">Company Name</label>
+                                    <input
+                                        required
+                                        className="w-full bg-surface-muted/50 border border-surface-border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-brand-secondary transition-all"
+                                        placeholder="Acme AI"
+                                        value={name}
+                                        onChange={e => setName(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted pl-1">Website URL</label>
+                                    <input
+                                        required
+                                        className="w-full bg-surface-muted/50 border border-surface-border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-brand-secondary transition-all"
+                                        placeholder="acme.ai"
+                                        value={website}
+                                        onChange={e => setWebsite(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted pl-1">Sector</label>
+                                    <select
+                                        className="w-full bg-surface-muted/50 border border-surface-border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-brand-secondary transition-all"
+                                        value={sector}
+                                        onChange={e => setSector(e.target.value)}
+                                    >
+                                        <option>Artificial Intelligence</option>
+                                        <option>Fintech</option>
+                                        <option>Developer Tools</option>
+                                        <option>SaaS</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted pl-1">Funding Stage</label>
+                                    <select
+                                        className="w-full bg-surface-muted/50 border border-surface-border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-brand-secondary transition-all"
+                                        value={stage}
+                                        onChange={e => setStage(e.target.value as any)}
+                                    >
+                                        <option>Stealth</option>
+                                        <option>Seed</option>
+                                        <option>Series A</option>
+                                        <option>Series B</option>
+                                        <option>Series C+</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted pl-1">Capital Raised</label>
+                                    <input
+                                        className="w-full bg-surface-muted/50 border border-surface-border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-brand-secondary transition-all"
+                                        placeholder="$5M"
+                                        value={funding}
+                                        onChange={e => setFunding(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted pl-1">Location</label>
+                                    <input
+                                        className="w-full bg-surface-muted/50 border border-surface-border rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-brand-secondary transition-all"
+                                        placeholder="London, UK"
+                                        value={location}
+                                        onChange={e => setLocation(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 py-4 rounded-2xl font-black text-sm uppercase tracking-widest bg-surface-muted text-text-muted hover:bg-surface-border transition-all"
+                                >
+                                    Abort
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-[2] py-4 bg-brand-secondary text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-brand-secondary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                >
+                                    Index Entity
+                                </button>
+                            </div>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
     );
 }
 

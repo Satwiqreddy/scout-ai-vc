@@ -10,17 +10,31 @@ import {
     Settings,
     ChevronDown,
     Sparkles,
-    Search as SearchIcon
+    Search as SearchIcon,
+    Moon,
+    Sun,
+    LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { getStorageItem, setStorageItem } from '@/lib/storage';
 
 const UIContext = createContext<{
     isCollapsed: boolean;
     setIsCollapsed: (v: boolean) => void;
+    theme: 'light' | 'dark';
+    toggleTheme: () => void;
+    isLoggedIn: boolean;
+    login: () => void;
+    logout: () => void;
 }>({
     isCollapsed: false,
     setIsCollapsed: () => { },
+    theme: 'dark',
+    toggleTheme: () => { },
+    isLoggedIn: false,
+    login: () => { },
+    logout: () => { },
 });
 
 export const useUI = () => useContext(UIContext);
@@ -29,7 +43,64 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [globalSearch, setGlobalSearch] = useState('');
+    const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+    const [isMounted, setIsMounted] = useState(false);
     const router = useRouter();
+    const pathname = usePathname();
+
+    const login = () => {
+        setIsLoggedIn(true);
+        setStorageItem('vc_auth', true);
+        router.push('/');
+    };
+
+    const logout = () => {
+        setIsLoggedIn(false);
+        setStorageItem('vc_auth', false);
+        router.push('/login');
+    };
+
+    const toggleTheme = () => {
+        const newTheme = theme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+        setStorageItem('vc_theme', newTheme);
+        applyTheme(newTheme);
+    };
+
+    const applyTheme = (t: 'light' | 'dark') => {
+        if (t === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+        } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+        }
+    };
+
+    useEffect(() => {
+        setIsMounted(true);
+        const savedTheme = getStorageItem('vc_theme', 'dark');
+        setTheme(savedTheme);
+        applyTheme(savedTheme);
+
+        const auth = getStorageItem('vc_auth', false);
+        setIsLoggedIn(auth);
+
+        const handleScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+        if (isMounted) {
+            if (!isLoggedIn && pathname !== '/login') {
+                router.push('/login');
+            } else if (isLoggedIn && pathname === '/login') {
+                router.push('/');
+            }
+        }
+    }, [isLoggedIn, pathname, isMounted, router]);
 
     const handleGlobalSearch = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && globalSearch.trim()) {
@@ -37,15 +108,20 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
         }
     };
 
-    useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 20);
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+    if (!isMounted) return null;
+
+    // Don't show the App Shell (Sidebar/Header) on the Login page
+    if (pathname === '/login') {
+        return (
+            <UIContext.Provider value={{ isCollapsed, setIsCollapsed, theme, toggleTheme, isLoggedIn, login, logout }}>
+                {children}
+            </UIContext.Provider>
+        );
+    }
 
     return (
-        <UIContext.Provider value={{ isCollapsed, setIsCollapsed }}>
-            <div className="flex min-h-screen bg-background text-foreground">
+        <UIContext.Provider value={{ isCollapsed, setIsCollapsed, theme, toggleTheme, isLoggedIn, login, logout }}>
+            <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
                 <Sidebar />
                 <div className={cn(
                     "flex-1 flex flex-col min-h-screen transition-all duration-500 ease-in-out",
@@ -79,6 +155,28 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <button
+                                onClick={toggleTheme}
+                                className="p-2.5 rounded-xl hover:bg-surface-muted transition-colors relative group"
+                                title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+                            >
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={theme}
+                                        initial={{ opacity: 0, rotate: -90, scale: 0.5 }}
+                                        animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                                        exit={{ opacity: 0, rotate: 90, scale: 0.5 }}
+                                        transition={{ duration: 0.2 }}
+                                    >
+                                        {theme === 'light' ? (
+                                            <Moon size={20} className="text-text-muted group-hover:text-brand-secondary" />
+                                        ) : (
+                                            <Sun size={20} className="text-text-muted group-hover:text-amber-500" />
+                                        )}
+                                    </motion.div>
+                                </AnimatePresence>
+                            </button>
+
                             <button className="p-2.5 rounded-xl hover:bg-surface-muted transition-colors relative">
                                 <Bell size={20} className="text-text-muted" />
                                 <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-brand-secondary border-2 border-surface-bg" />
@@ -91,7 +189,7 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
                                     JD
                                 </div>
                                 <div className="hidden md:flex flex-col items-start leading-none gap-1">
-                                    <span className="text-[11px] font-black tracking-tight">Jane Doe</span>
+                                    <span className="text-[11px] font-black text-text-bright tracking-tight">Jane Doe</span>
                                     <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Managing Partner</span>
                                 </div>
                                 <ChevronDown size={14} className="text-text-muted group-hover:text-text-high transition-colors" />

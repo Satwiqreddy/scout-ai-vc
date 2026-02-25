@@ -42,7 +42,9 @@ export default function CompanyProfilePage() {
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
-        const found = mockCompanies.find(c => c.id === params.id);
+        const customCompanies = getStorageItem('vc_custom_companies', []);
+        const all = [...mockCompanies, ...customCompanies];
+        const found = all.find(c => c.id === params.id);
         if (found) {
             setCompany(found);
             // Load persistent notes
@@ -92,6 +94,7 @@ export default function CompanyProfilePage() {
             const data = await response.json();
             setCompany(prev => prev ? { ...prev, enrichedData: data } : null);
             showToast("Deep enrichment complete.");
+            setIsEnriching(false);
         } catch (error) {
             console.error(error);
             // Fallback to mock enrichment
@@ -112,9 +115,8 @@ export default function CompanyProfilePage() {
                     }
                 } : null);
                 showToast("Enrichment complete (simulated).");
+                setIsEnriching(false);
             }, 1500);
-        } finally {
-            setIsEnriching(false);
         }
     };
 
@@ -276,16 +278,34 @@ export default function CompanyProfilePage() {
                                         <div className="space-y-10">
                                             <p className="text-xl leading-relaxed font-medium text-text-main text-left">{company.description}</p>
 
-                                            {company.enrichedData ? (
+                                            {isEnriching ? (
+                                                <div className="p-16 text-center border-2 border-dashed border-surface-border rounded-[2.5rem] bg-surface-muted/10">
+                                                    <div className="w-20 h-20 bg-surface-bg rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-surface-border shadow-xl shadow-black/[0.02]">
+                                                        <Loader2 className="w-10 h-10 text-brand-secondary animate-spin" />
+                                                    </div>
+                                                    <h3 className="font-black text-2xl tracking-tight">Scouting Universe...</h3>
+                                                    <p className="text-text-muted mt-2 mb-10 max-w-sm mx-auto font-medium">
+                                                        Accessing real-time signals and synthesizing investment thesis...
+                                                    </p>
+                                                    <div className="w-full max-w-xs mx-auto h-2 bg-surface-muted rounded-full overflow-hidden">
+                                                        <motion.div
+                                                            initial={{ x: "-100%" }}
+                                                            animate={{ x: "100%" }}
+                                                            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                                                            className="w-full h-full bg-brand-secondary"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : company.enrichedData ? (
                                                 <div className="space-y-8">
                                                     <div className="p-8 bg-brand-secondary/5 rounded-3xl border border-brand-secondary/10 relative overflow-hidden group">
                                                         <div className="relative z-10 text-left">
                                                             <div className="flex items-center gap-2 mb-4 text-brand-secondary font-black text-[11px] uppercase tracking-widest">
-                                                                <Sparkles className="w-4 h-4 fill-current" />
+                                                                <Sparkles className="w-4 h-4 fill-current transition-transform group-hover:rotate-12" />
                                                                 AI Market Intelligence
                                                             </div>
                                                             <p className="text-xl font-black mb-6 leading-tight">{company.enrichedData.summary}</p>
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-3">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-3 pb-4">
                                                                 {company.enrichedData.bulletPoints.map((point, i) => (
                                                                     <div key={i} className="flex items-start gap-3 text-sm text-text-muted font-bold font-medium leading-relaxed">
                                                                         <div className="w-1.5 h-1.5 rounded-full bg-brand-secondary mt-1.5 shrink-0" />
@@ -294,7 +314,7 @@ export default function CompanyProfilePage() {
                                                                 ))}
                                                             </div>
                                                         </div>
-                                                        <Zap className="absolute -bottom-8 -right-8 w-40 h-40 text-brand-secondary/5 -rotate-12 group-hover:rotate-0 transition-transform duration-700" />
+                                                        <Zap className="absolute -bottom-8 -right-8 w-40 h-40 text-brand-secondary/5 -rotate-12 group-hover:rotate-0 transition-transform duration-700 pointer-events-none" />
                                                     </div>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
