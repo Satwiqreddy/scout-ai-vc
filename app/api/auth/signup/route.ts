@@ -23,13 +23,13 @@ export async function POST(req: NextRequest) {
         const hashedPassword = await bcrypt.hash(password, 12);
 
         // Create user
-        await User.create({
+        const newUser = await User.create({
             email,
             password: hashedPassword,
             name,
         });
 
-        return NextResponse.json({ message: 'User created successfully' }, { status: 201 });
+        return NextResponse.json({ message: 'User created successfully', user: { id: newUser._id.toString(), email: newUser.email, name: newUser.name } }, { status: 201 });
     } catch (error: any) {
         console.error('Signup Error:', error);
         return NextResponse.json({
