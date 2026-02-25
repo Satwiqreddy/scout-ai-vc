@@ -19,6 +19,8 @@ import {
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
+import { useUI } from '@/components/AppWrapper';
+
 const stats = [
   { name: 'Companies Sourced', value: '1,284', change: '+12%', icon: Building2 },
   { name: 'High Signal Found', value: '42', change: '+18%', icon: Zap },
@@ -27,6 +29,9 @@ const stats = [
 ];
 
 export default function DashboardPage() {
+  const { user } = useUI();
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Partner';
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-10">
       {/* Hero / Greeting */}
@@ -37,7 +42,7 @@ export default function DashboardPage() {
             Intelligence Overview
           </div>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight text-text-bright">
-            Good morning, <span className="text-gradient">Jane.</span>
+            Good morning, <span className="text-gradient">{firstName}.</span>
           </h1>
           <p className="text-text-muted text-lg max-w-xl">
             Here's what happened in your thesis areas while you were away.
