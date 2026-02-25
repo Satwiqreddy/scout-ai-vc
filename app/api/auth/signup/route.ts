@@ -30,8 +30,12 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ message: 'User created successfully' }, { status: 201 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Signup Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Database Connection or Server Error',
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
 }

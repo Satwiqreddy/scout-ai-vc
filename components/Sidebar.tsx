@@ -15,7 +15,10 @@ import {
     ChevronRight,
     Menu,
     Zap,
-    Sparkles
+    Sparkles,
+    GitBranch,
+    Activity,
+    FileBarChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,6 +27,9 @@ import { useUI } from './AppWrapper';
 const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Companies', href: '/companies', icon: Building2 },
+    { name: 'Pipeline', href: '/pipeline', icon: GitBranch },
+    { name: 'Portfolio Pulse', href: '/pulse', icon: Activity },
+    { name: 'Reporting', href: '/reporting', icon: FileBarChart },
     { name: 'Lists', href: '/lists', icon: ListTodo },
     { name: 'Saved Searches', href: '/saved', icon: Bookmark },
 ];

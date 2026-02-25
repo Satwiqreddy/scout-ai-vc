@@ -118,8 +118,48 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
             } else if (isLoggedIn && pathname === '/login') {
                 router.push('/');
             }
+
+            // Sync LocalStorage companies to MongoDB if logged in
+            if (isLoggedIn) {
+                syncLocalCompanies();
+            }
         }
     }, [isLoggedIn, pathname, isMounted, router]);
+
+    const syncLocalCompanies = async () => {
+        const localCompanies = getStorageItem('vc_custom_companies', []);
+        if (localCompanies.length === 0) return;
+
+        console.log(`Syncing ${localCompanies.length} companies to MongoDB...`);
+        let successCount = 0;
+
+        for (const company of localCompanies) {
+            try {
+                const res = await fetch('/api/companies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: company.name,
+                        description: company.description,
+                        industry: company.industry,
+                        stage: company.stage,
+                        location: company.location || 'Unknown',
+                        website: company.website,
+                        signals: company.signals || [],
+                        dealStatus: 'Sourcing'
+                    })
+                });
+                if (res.ok) successCount++;
+            } catch (err) {
+                console.error('Sync error:', err);
+            }
+        }
+
+        if (successCount > 0) {
+            console.log(`Successfully synced ${successCount} companies.`);
+            setStorageItem('vc_custom_companies', []); // Clear local storage after sync
+        }
+    };
 
     const handleGlobalSearch = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && globalSearch.trim()) {

@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         // Create JWT
         const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'super-secret-key-123-vc-platform');
         const token = await new jose.SignJWT({
-            id: user._id,
+            id: user._id.toString(),
             email: user.email,
             name: user.name
         })
@@ -58,8 +58,12 @@ export async function POST(req: NextRequest) {
         });
 
         return response;
-    } catch (error) {
+    } catch (error: any) {
         console.error('Login Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Database Connection or Server Error',
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
 }

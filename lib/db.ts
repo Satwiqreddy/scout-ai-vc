@@ -18,6 +18,10 @@ if (!cached) {
 }
 
 async function connectToDatabase() {
+    if (!MONGODB_URI) {
+        throw new Error('MONGODB_URI is undefined. Please set it in your environment variables.');
+    }
+
     if (cached.conn) {
         return cached.conn;
     }
@@ -25,10 +29,15 @@ async function connectToDatabase() {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
+            serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
         };
 
         cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+            console.log('MongoDB Connected successfully to:', MONGODB_URI.split('@').pop()); // Log host only for safety
             return mongoose;
+        }).catch(err => {
+            console.error('MongoDB Connection Error:', err.message);
+            throw err;
         });
     }
 

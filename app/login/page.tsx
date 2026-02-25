@@ -44,7 +44,10 @@ export default function LoginPage() {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.error || 'Authentication failed');
+                const message = data.details
+                    ? `${data.error}: ${data.details}`
+                    : data.error || 'Authentication failed';
+                throw new Error(message);
             }
 
             if (mode === 'signin') {

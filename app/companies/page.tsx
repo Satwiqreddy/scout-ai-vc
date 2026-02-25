@@ -42,25 +42,54 @@ export default function CompaniesPage() {
     const sectors = ['All', 'Artificial Intelligence', 'Fintech', 'Developer Tools', 'SaaS'];
 
     useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 800);
-        // Load custom companies
-        const customCompanies = getStorageItem('vc_custom_companies', []);
-        setAllCompanies([...mockCompanies, ...customCompanies]);
-        return () => clearTimeout(timer);
+        fetchData();
     }, []);
+
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            // Fetch MongoDB companies
+            const res = await fetch('/api/companies');
+            let dbCompanies = [];
+            if (res.ok) {
+                dbCompanies = await res.json();
+            }
+
+            // Load custom companies (fallback/sync check)
+            const customCompanies = getStorageItem('vc_custom_companies', []);
+
+            // Map MongoDB models to frontend Company interface if necessary 
+            // Our model is already very similar
+            const transformedDb = dbCompanies.map((c: any) => ({
+                id: c._id,
+                name: c.name,
+                description: c.description,
+                industry: c.industry, // industry in model, sector in mock
+                sector: c.industry,
+                stage: c.stage,
+                fundingTotal: '$0', // default for now
+                location: c.location || 'Unknown',
+                website: c.website || '',
+                founded: new Date(c.createdAt).getFullYear() || 2024,
+                tags: [c.industry, c.stage],
+                signals: c.signals || []
+            }));
+
+            setAllCompanies([...mockCompanies, ...customCompanies, ...transformedDb]);
+        } catch (error) {
+            console.error('Fetch error:', error);
+            const customCompanies = getStorageItem('vc_custom_companies', []);
+            setAllCompanies([...mockCompanies, ...customCompanies]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const [sortKey, setSortKey] = useState<SortKey>('name');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [currentPage, setCurrentPage] = useState(1);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const itemsPerPage = 5;
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 800);
-        // Load custom companies
-        const customCompanies = getStorageItem('vc_custom_companies', []);
-        setAllCompanies([...mockCompanies, ...customCompanies]);
-        return () => clearTimeout(timer);
-    }, []);
+    const itemsPerPage = 10;
 
     const handleSort = (key: SortKey) => {
         if (sortKey === key) {
@@ -72,11 +101,46 @@ export default function CompaniesPage() {
         setCurrentPage(1);
     };
 
-    const handleAddEntity = (newCompany: Company) => {
-        const customCompanies = getStorageItem('vc_custom_companies', []);
-        const updatedCustom = [...customCompanies, newCompany];
-        setStorageItem('vc_custom_companies', updatedCustom);
-        setAllCompanies([...mockCompanies, ...updatedCustom]);
+    const handleAddEntity = async (newCompany: any) => {
+        try {
+            const res = await fetch('/api/companies', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: newCompany.name,
+                    description: newCompany.description,
+                    industry: newCompany.sector,
+                    stage: newCompany.stage,
+                    location: newCompany.location,
+                    website: newCompany.website,
+                    signals: []
+                })
+            });
+
+            if (res.ok) {
+                const saved = await res.json();
+                const transformed = {
+                    id: saved._id,
+                    name: saved.name,
+                    description: saved.description,
+                    sector: saved.industry,
+                    stage: saved.stage,
+                    fundingTotal: '$0',
+                    location: saved.location,
+                    website: saved.website,
+                    founded: new Date(saved.createdAt).getFullYear() || new Date().getFullYear(),
+                    tags: [saved.industry, saved.stage],
+                    signals: []
+                };
+                setAllCompanies(prev => [...prev, transformed]);
+            }
+        } catch (error) {
+            console.error('Add error:', error);
+            // Fallback to local
+            const customCompanies = getStorageItem('vc_custom_companies', []);
+            setStorageItem('vc_custom_companies', [...customCompanies, newCompany]);
+            setAllCompanies(prev => [...prev, newCompany]);
+        }
         setIsAddModalOpen(false);
     };
 
@@ -89,8 +153,9 @@ export default function CompaniesPage() {
         });
 
         result.sort((a, b) => {
-            let valA: string | number = a[sortKey];
-            let valB: string | number = b[sortKey];
+            const key = sortKey as keyof Company;
+            let valA: any = a[key];
+            let valB: any = b[key];
 
             if (sortKey === 'fundingTotal') {
                 valA = parseFloat(a.fundingTotal.replace(/[^0-9.]/g, '')) || 0;

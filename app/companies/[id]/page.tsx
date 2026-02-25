@@ -23,7 +23,9 @@ import {
     Command,
     ChevronRight,
     Save,
-    Check
+    Check,
+    FileText,
+    Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { mockCompanies, Company } from '@/lib/mock-data';
@@ -36,32 +38,60 @@ export default function CompanyProfilePage() {
     const [company, setCompany] = useState<Company | null>(null);
     const [isEnriching, setIsEnriching] = useState(false);
     const [notes, setNotes] = useState('');
-    const [activeTab, setActiveTab] = useState<'overview' | 'signals' | 'notes'>('overview');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisData, setAnalysisData] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<'overview' | 'intelligence' | 'signals' | 'notes'>('overview');
     const [showSaveMenu, setShowSaveMenu] = useState(false);
     const [lists, setLists] = useState<any[]>([]);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
-        const customCompanies = getStorageItem('vc_custom_companies', []);
-        const all = [...mockCompanies, ...customCompanies];
-        const found = all.find(c => c.id === params.id);
-        if (found) {
-            setCompany(found);
-            // Load persistent notes
-            const savedNotes = getStorageItem(`vc_notes_${params.id}`, found.notes || '');
-            setNotes(savedNotes);
-        }
-        setLists(getStorageItem('vc_lists', []));
+        fetchCompany();
     }, [params.id]);
+
+    const fetchCompany = async () => {
+        try {
+            const res = await fetch(`/api/companies/${params.id}`);
+            if (res.ok) {
+                const data = await res.json();
+                setCompany(data);
+                setNotes(data.notes?.[0]?.text || '');
+                if (data.deckAnalysis) {
+                    setAnalysisData(data.deckAnalysis);
+                }
+            } else {
+                // Fallback to mock for static entries if API fails
+                const customCompanies = getStorageItem('vc_custom_companies', []);
+                const all = [...mockCompanies, ...customCompanies];
+                const found = all.find(c => c.id === params.id);
+                if (found) setCompany(found);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLists(getStorageItem('vc_lists', []));
+        }
+    };
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
         setTimeout(() => setToast(null), 3000);
     };
 
-    const handleSaveNotes = () => {
-        setStorageItem(`vc_notes_${params.id}`, notes);
-        showToast("Intelligence notes saved securely.");
+    const handleSaveNotes = async () => {
+        try {
+            const res = await fetch(`/api/companies/${params.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: [{ text: notes, date: new Date() }] })
+            });
+            if (res.ok) {
+                showToast("Intelligence notes saved securely.");
+            }
+        } catch (error) {
+            setStorageItem(`vc_notes_${params.id}`, notes);
+            showToast("Saved to local storage (offline).");
+        }
     };
 
     const handleAddToList = (listId: string) => {
@@ -117,6 +147,35 @@ export default function CompanyProfilePage() {
                 showToast("Enrichment complete (simulated).");
                 setIsEnriching(false);
             }, 1500);
+        }
+    };
+
+    const handleAnalyzeDeck = async () => {
+        if (!company) return;
+        setIsAnalyzing(true);
+        setActiveTab('intelligence');
+
+        try {
+            const response = await fetch('/api/analyze-deck', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    companyId: (company as any)._id || params.id,
+                    websiteUrl: company.website,
+                    deckText: company.description
+                }),
+            });
+
+            if (!response.ok) throw new Error('Analysis failed');
+
+            const data = await response.json();
+            setAnalysisData(data);
+            showToast("Pitch deck intelligence extracted.");
+        } catch (error) {
+            console.error(error);
+            showToast("Analysis failed. Try again later.", "error");
+        } finally {
+            setIsAnalyzing(false);
         }
     };
 
@@ -245,7 +304,7 @@ export default function CompanyProfilePage() {
                             </div>
 
                             <div className="flex gap-8 border-b border-surface-border mb-10 overflow-x-auto pb-1">
-                                {(['overview', 'signals', 'notes'] as const).map(tab => (
+                                {(['overview', 'intelligence', 'signals', 'notes'] as const).map(tab => (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
@@ -357,6 +416,60 @@ export default function CompanyProfilePage() {
                                                         className="px-8 py-3.5 bg-brand-secondary text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-brand-secondary/30"
                                                     >
                                                         Run Active Scout
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'intelligence' && (
+                                        <div className="space-y-8 text-left">
+                                            {isAnalyzing ? (
+                                                <div className="p-16 text-center border-2 border-dashed border-surface-border rounded-[2.5rem] bg-surface-muted/10">
+                                                    <Loader2 className="w-10 h-10 text-brand-secondary animate-spin mx-auto mb-6" />
+                                                    <h3 className="font-black text-2xl tracking-tight text-text-bright">Parsing Pitch Deck...</h3>
+                                                    <p className="text-text-muted mt-2 font-medium">Extracting TAM, Team assessment, and Traction data via Gemini.</p>
+                                                </div>
+                                            ) : analysisData ? (
+                                                <div className="grid grid-cols-1 gap-6">
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                        <div className="p-6 bg-surface-muted/30 rounded-3xl border border-surface-border">
+                                                            <div className="flex items-center gap-2 mb-4 text-brand-secondary font-black text-[10px] uppercase tracking-widest">
+                                                                <Target className="w-4 h-4" />
+                                                                TAM Analysis
+                                                            </div>
+                                                            <p className="text-sm font-bold text-text-main leading-relaxed">{analysisData.tam}</p>
+                                                        </div>
+                                                        <div className="p-6 bg-surface-muted/30 rounded-3xl border border-surface-border">
+                                                            <div className="flex items-center gap-2 mb-4 text-brand-secondary font-black text-[10px] uppercase tracking-widest">
+                                                                <Users className="w-4 h-4" />
+                                                                Team Assessment
+                                                            </div>
+                                                            <p className="text-sm font-bold text-text-main leading-relaxed">{analysisData.team}</p>
+                                                        </div>
+                                                        <div className="p-6 bg-surface-muted/30 rounded-3xl border border-surface-border">
+                                                            <div className="flex items-center gap-2 mb-4 text-brand-secondary font-black text-[10px] uppercase tracking-widest">
+                                                                <TrendingUp className="w-4 h-4" />
+                                                                Traction Metrics
+                                                            </div>
+                                                            <p className="text-sm font-bold text-text-main leading-relaxed">{analysisData.traction}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-8 bg-brand-secondary/5 rounded-3xl border border-brand-secondary/10">
+                                                        <h4 className="text-[10px] font-black mb-4 uppercase tracking-widest text-brand-secondary">Investment Thesis</h4>
+                                                        <p className="text-lg font-black text-text-bright leading-tight">{analysisData.summary}</p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="p-16 text-center border-2 border-dashed border-surface-border rounded-[2.5rem] bg-surface-muted/10">
+                                                    <FileText className="w-12 h-12 text-text-muted/30 mx-auto mb-6" />
+                                                    <h3 className="font-black text-2xl tracking-tight">No Analysis Found</h3>
+                                                    <p className="text-text-muted mt-2 mb-10 max-w-sm mx-auto font-medium">Upload or link a pitch deck to extract institutional-grade intelligence.</p>
+                                                    <button
+                                                        onClick={handleAnalyzeDeck}
+                                                        className="px-8 py-3.5 bg-brand-secondary text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                                                    >
+                                                        Analyze Deal Deck
                                                     </button>
                                                 </div>
                                             )}
