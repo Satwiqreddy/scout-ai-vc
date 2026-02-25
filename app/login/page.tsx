@@ -18,19 +18,46 @@ import {
 export default function LoginPage() {
     const { login } = useUI();
     const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-    const [email, setEmail] = useState('demo@scout.ai');
+    const [email, setEmail] = useState('');
     const [name, setName] = useState('');
-    const [password, setPassword] = useState('password123');
+    const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            login();
+        setError(null);
+
+        try {
+            const endpoint = mode === 'signin' ? '/api/auth/login' : '/api/auth/signup';
+            const body = mode === 'signin'
+                ? { email, password }
+                : { email, password, name };
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Authentication failed');
+            }
+
+            if (mode === 'signin') {
+                login(data.user);
+            } else {
+                setMode('signin');
+                alert('Account created! Please sign in.');
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     return (
@@ -83,6 +110,17 @@ export default function LoginPage() {
                             </button>
                         </div>
 
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center gap-3 text-red-400 text-xs font-bold"
+                            >
+                                <Lock size={14} />
+                                {error}
+                            </motion.div>
+                        )}
+
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <AnimatePresence mode="wait">
                                 {mode === 'signup' && (
@@ -100,7 +138,7 @@ export default function LoginPage() {
                                                 type="text"
                                                 required={mode === 'signup'}
                                                 className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-3.5 pl-12 pr-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-brand-secondary/50 focus:bg-white/[0.05] transition-all text-sm"
-                                                placeholder="Dr. Julian Scout"
+                                                placeholder="Arjun Reddy"
                                                 value={name}
                                                 onChange={(e) => setName(e.target.value)}
                                             />

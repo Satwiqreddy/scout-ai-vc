@@ -30,7 +30,7 @@ const navItems = [
 
 export function Sidebar() {
     const pathname = usePathname();
-    const { isCollapsed, setIsCollapsed, logout } = useUI();
+    const { isCollapsed, setIsCollapsed, logout, user } = useUI();
 
     return (
         <motion.aside
@@ -139,17 +139,17 @@ export function Sidebar() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-black text-xs shadow-lg">
-                                    JD
+                                    {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
                                 </div>
                                 <div className="flex flex-col overflow-hidden text-left">
-                                    <span className="text-sm font-black text-text-bright truncate">Jane Doe</span>
-                                    <span className="text-[10px] font-bold text-brand-secondary uppercase tracking-wider truncate">Managing Partner</span>
+                                    <span className="text-sm font-black text-text-bright truncate">{user?.name || 'User'}</span>
+                                    <span className="text-[10px] font-bold text-brand-secondary uppercase tracking-wider truncate">{user?.email || 'Managing Partner'}</span>
                                 </div>
                             </div>
                         </div>
                     ) : (
                         <div className="w-10 h-10 rounded-2xl bg-surface-muted border border-surface-border flex items-center justify-center mb-6 cursor-pointer hover:bg-surface-hover transition-colors">
-                            <span className="text-[10px] font-black text-text-muted">JD</span>
+                            <span className="text-[10px] font-black text-text-muted">{user?.name?.split(' ').map(n => n[0]).join('') || 'U'}</span>
                         </div>
                     )}
 

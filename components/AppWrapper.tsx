@@ -25,7 +25,8 @@ const UIContext = createContext<{
     theme: 'light' | 'dark';
     toggleTheme: () => void;
     isLoggedIn: boolean;
-    login: () => void;
+    user: { name: string; email: string } | null;
+    login: (userData?: { name: string; email: string }) => void;
     logout: () => void;
 }>({
     isCollapsed: false,
@@ -33,6 +34,7 @@ const UIContext = createContext<{
     theme: 'dark',
     toggleTheme: () => { },
     isLoggedIn: false,
+    user: null,
     login: () => { },
     logout: () => { },
 });
@@ -45,19 +47,31 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
     const [globalSearch, setGlobalSearch] = useState('');
     const [theme, setTheme] = useState<'light' | 'dark'>('dark');
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+    const [user, setUser] = useState<{ name: string; email: string } | null>(null);
     const [isMounted, setIsMounted] = useState(false);
     const router = useRouter();
     const pathname = usePathname();
 
-    const login = () => {
+    const login = (userData?: { name: string; email: string }) => {
         setIsLoggedIn(true);
+        if (userData) {
+            setUser(userData);
+            setStorageItem('vc_user', userData);
+        }
         setStorageItem('vc_auth', true);
         router.push('/');
     };
 
-    const logout = () => {
+    const logout = async () => {
         setIsLoggedIn(false);
+        setUser(null);
         setStorageItem('vc_auth', false);
+        setStorageItem('vc_user', null);
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
         router.push('/login');
     };
 
@@ -87,6 +101,11 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
         const auth = getStorageItem('vc_auth', false);
         setIsLoggedIn(auth);
 
+        if (auth) {
+            const savedUser = getStorageItem('vc_user', null);
+            setUser(savedUser);
+        }
+
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
@@ -113,14 +132,14 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
     // Don't show the App Shell (Sidebar/Header) on the Login page
     if (pathname === '/login') {
         return (
-            <UIContext.Provider value={{ isCollapsed, setIsCollapsed, theme, toggleTheme, isLoggedIn, login, logout }}>
+            <UIContext.Provider value={{ isCollapsed, setIsCollapsed, theme, toggleTheme, isLoggedIn, user, login, logout }}>
                 {children}
             </UIContext.Provider>
         );
     }
 
     return (
-        <UIContext.Provider value={{ isCollapsed, setIsCollapsed, theme, toggleTheme, isLoggedIn, login, logout }}>
+        <UIContext.Provider value={{ isCollapsed, setIsCollapsed, theme, toggleTheme, isLoggedIn, user, login, logout }}>
             <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
                 <Sidebar />
                 <div className={cn(
@@ -186,11 +205,11 @@ export function AppWrapper({ children }: { children: React.ReactNode }) {
 
                             <button className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-2xl hover:bg-surface-muted transition-all group">
                                 <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-secondary to-purple-500 flex items-center justify-center text-white font-black text-[10px] shadow-lg shadow-brand-secondary/10 group-hover:scale-105 transition-transform">
-                                    JD
+                                    {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
                                 </div>
                                 <div className="hidden md:flex flex-col items-start leading-none gap-1">
-                                    <span className="text-[11px] font-black text-text-bright tracking-tight">Jane Doe</span>
-                                    <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Managing Partner</span>
+                                    <span className="text-[11px] font-black text-text-bright tracking-tight">{user?.name || 'Arjun Reddy'}</span>
+                                    <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">{user?.email || 'Managing Partner'}</span>
                                 </div>
                                 <ChevronDown size={14} className="text-text-muted group-hover:text-text-high transition-colors" />
                             </button>
